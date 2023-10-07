@@ -24,8 +24,13 @@
     <script src="./jquery.js"></script>
     <script src="./qrjs.js"></script>
 
+    <script>
+        // Example usage:
+        const otpSecret = 'DSAASDSADADAJNKGFNJKRGNJKGdRJNKGRJNKG'; // Replace with a real secret
+    </script>
+
     <script type="text/javascript">
-        new QRCode(document.getElementById("qrcode"), `otpauth://totp/ThanhF?secret=JBSWY3DPEHPK3PXP`);
+        new QRCode(document.getElementById("qrcode"), `otpauth://totp/ThanhF?secret=${otpSecret}`);
     </script>
 
     <script>
@@ -84,8 +89,7 @@
             return generateTOTP(secret).then(generatedOTP => generatedOTP === otp);
         }
 
-        // Example usage:
-        const otpSecret = 'JBSWY3DPEHPK3PXP'; // Replace with a real secret
+
 
         function generateAndDisplayOTP() {
             generateTOTP(otpSecret)
