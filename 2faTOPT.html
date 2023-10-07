@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>TOTP Example</title>
+</head>
+
+<body>
+    <div>
+        <h2>Generated OTP:</h2>
+        <span id="otpDisplay"></span>
+        <div id="qrcode"></div>
+    </div>
+    <br>
+    <div>
+        <label for="otpInput">Enter OTP:</label>
+        <input type="text" id="otpInput">
+        <button onclick="checkOTP()">Check OTP</button>
+    </div>
+    <div>
+        <span id="validationResult"></span>
+    </div>
+
+    <script src="./jquery.js"></script>
+    <script src="./qrjs.js"></script>
+
+    <script type="text/javascript">
+        new QRCode(document.getElementById("qrcode"), `otpauth://totp/ThanhF?secret=JBSWY3DPEHPK3PXP`);
+    </script>
+
+    <script>
+        function generateTOTP(secret) {
+            const crypto = window.crypto || window.msCrypto;
+            const encoder = new TextEncoder();
+            const counter = Math.floor(Date.now() / 30000); // 30-second intervals
+
+            const key = base32toHex(secret);
+            const counterHex = ('0000000000000000' + counter.toString(16)).slice(-16); // Convert counter to 16-digit hex
+            const hmacKey = hexToUint8Array(key);
+            const counterBuffer = hexToUint8Array(counterHex);
+
+            return crypto.subtle.importKey('raw', hmacKey, { name: 'HMAC', hash: { name: 'SHA-1' } }, false, ['sign'])
+                .then(key => crypto.subtle.sign('HMAC', key, counterBuffer))
+                .then(buffer => {
+                    const byteArray = new Uint8Array(buffer);
+                    const offset = byteArray[byteArray.length - 1] & 0xf;
+                    const otp = ((byteArray[offset] & 0x7f) << 24) |
+                        ((byteArray[offset + 1] & 0xff) << 16) |
+                        ((byteArray[offset + 2] & 0xff) << 8) |
+                        (byteArray[offset + 3] & 0xff);
+                    return ('000000' + (otp % 1000000)).slice(-6); // Convert to 6-digit OTP
+                });
+        }
+
+        function base32toHex(base32) {
+            const base32chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+            let bits = '';
+            let hex = '';
+            for (let i = 0; i < base32.length; i++) {
+                let val = base32chars.indexOf(base32.charAt(i).toUpperCase());
+                bits += leftpad(val.toString(2), 5, '0');
+            }
+            for (let i = 0; i + 4 <= bits.length; i += 4) {
+                let chunk = bits.substr(i, 4);
+                hex = hex + parseInt(chunk, 2).toString(16);
+            }
+            return hex;
+        }
+
+        function hexToUint8Array(hex) {
+            const result = new Uint8Array(hex.length / 2);
+            for (let i = 0; i < hex.length; i += 2) {
+                result[i / 2] = parseInt(hex.substr(i, 2), 16);
+            }
+            return result;
+        }
+
+        function leftpad(str, len, pad) {
+            while (str.length < len) str = pad + str;
+            return str;
+        }
+
+        function validateTOTP(secret, otp) {
+            return generateTOTP(secret).then(generatedOTP => generatedOTP === otp);
+        }
+
+        // Example usage:
+        const otpSecret = 'JBSWY3DPEHPK3PXP'; // Replace with a real secret
+
+        function generateAndDisplayOTP() {
+            generateTOTP(otpSecret)
+                .then(generatedOTP => {
+                    document.getElementById("otpDisplay").textContent = generatedOTP;
+                })
+                .catch(error => {
+                    console.error("Error generating OTP:", error);
+                });
+        }
+    </script>
+    <script>
+        function checkOTP() {
+            const userEnteredOTP = document.getElementById("otpInput").value;
+            validateTOTP(otpSecret, userEnteredOTP)
+                .then(valid => {
+                    const resultDisplay = document.getElementById("validationResult");
+                    if (valid) {
+                        resultDisplay.textContent = "Valid OTP";
+                    } else {
+                        resultDisplay.textContent = "Invalid OTP";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error validating OTP:", error);
+                });
+        }
+    </script>
+    <script>
+        setInterval(() => generateAndDisplayOTP(), 1000)
+    </script>
+</body>
+
+</html>
